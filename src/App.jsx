@@ -1,307 +1,467 @@
-import { useState } from "react"
-import "./App.css"
+import { useEffect, useMemo, useState } from "react";
+import "./App.css";
 
-const services = [
+const SERVICES = [
   {
-    id: 1,
+    id: "personal",
     title: "Персональная тренировка",
-    description: "Индивидуальная тренировка с тренером",
     duration: "60 минут",
-    price: "2 000 ₽",
+    price: 2000,
+    icon: "🏋️",
   },
   {
-    id: 2,
+    id: "gym",
     title: "Тренировка в зале",
-    description: "Силовая программа под ваши цели",
     duration: "90 минут",
-    price: "2 500 ₽",
+    price: 2500,
+    icon: "💪",
   },
   {
-    id: 3,
+    id: "online",
     title: "Онлайн-консультация",
-    description: "Разбор питания и тренировочного плана",
-    duration: "45 минут",
-    price: "1 500 ₽",
+    duration: "60 минут",
+    price: 1500,
+    icon: "💻",
   },
-]
+];
 
-const dates = [
-  { day: "Сегодня", date: "6 окт." },
-  { day: "Завтра", date: "7 окт." },
-  { day: "Чт", date: "8 окт." },
-  { day: "Пт", date: "9 окт." },
-  { day: "Сб", date: "10 окт." },
-]
-
-const times = [
-  "09:00",
+const TIMES = [
   "10:00",
-  "11:00",
-  "12:00",
-  "14:00",
+  "11:30",
+  "13:00",
   "15:00",
   "17:00",
-  "18:00",
-  "19:00",
-]
+  "18:30",
+];
+
+const WEEKDAYS = [
+  "Вс",
+  "Пн",
+  "Вт",
+  "Ср",
+  "Чт",
+  "Пт",
+  "Сб",
+];
+
+function formatPrice(price) {
+  return `${price.toLocaleString("ru-RU")} ₽`;
+}
+
+function getNextDays(count = 6) {
+  const result = [];
+  const today = new Date();
+
+  for (let i = 0; i < count; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+
+    result.push({
+      id: date.toISOString().slice(0, 10),
+      day: date.getDate(),
+      weekday: WEEKDAYS[date.getDay()],
+      month: date.toLocaleDateString("ru-RU", {
+        month: "short",
+      }),
+    });
+  }
+
+  return result;
+}
 
 function App() {
-  const [step, setStep] = useState(1)
-  const [selectedService, setSelectedService] = useState(null)
-  const [selectedDate, setSelectedDate] = useState(null)
-  const [selectedTime, setSelectedTime] = useState(null)
-  const [name, setName] = useState("")
-  const [phone, setPhone] = useState("")
+  const dates = useMemo(() => getNextDays(6), []);
 
-  const canContinue =
-    selectedService &&
-    selectedDate &&
-    selectedTime
+  const [selectedService, setSelectedService] = useState("personal");
+  const [selectedDate, setSelectedDate] = useState(dates[0]?.id);
+  const [selectedTime, setSelectedTime] = useState("11:30");
 
-  const confirmBooking = () => {
-    if (!name || !phone) {
-      alert("Пожалуйста, заполните имя и телефон")
-      return
+  const [name, setName] = useState("");
+  const [telegram, setTelegram] = useState("");
+
+  const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    // Если приложение открыто внутри Telegram —
+    // автоматически подставляем имя пользователя.
+    if (window.Telegram?.WebApp) {
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+
+      const user = window.Telegram.WebApp.initDataUnsafe?.user;
+
+      if (user) {
+        const fullName = [user.first_name, user.last_name]
+          .filter(Boolean)
+          .join(" ");
+
+        if (fullName) {
+          setName(fullName);
+        }
+
+        if (user.username) {
+          setTelegram(`@${user.username}`);
+        }
+      }
+    }
+  }, []);
+
+  const currentService = SERVICES.find(
+    (service) => service.id === selectedService
+  );
+
+  const currentDate = dates.find((date) => date.id === selectedDate);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    if (!name.trim()) {
+      alert("Введите ваше имя");
+      return;
     }
 
-    setStep(4)
-  }
+    setSubmitted(true);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  const handleNewBooking = () => {
+    setSubmitted(false);
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
 
   return (
     <div className="app">
+      <div className="app-shell">
+        {/* HEADER */}
+        <header className="hero">
+          <div className="hero-overlay" />
 
-      {/* Шапка */}
-      <header className="header">
-        <div className="trainer-avatar">
-          💪
-        </div>
+          <div className="hero-topbar">
+            <button className="round-button" type="button">
+              ←
+            </button>
 
-        <div>
-          <h1>Алексей Ульянов</h1>
-          <p>Персональный фитнес-тренер</p>
-        </div>
-      </header>
-
-      {/* Профиль */}
-      {step === 1 && (
-        <>
-          <div className="hero">
-            <div className="hero-icon">🏋️</div>
-
-            <h2>Тренируйся эффективнее</h2>
-
-            <p>
-              Персональные тренировки, питание
-              и программа под твои цели.
-            </p>
+            <button className="round-button" type="button">
+              ☰
+            </button>
           </div>
 
-          <h3 className="section-title">
-            Выберите тренировку
-          </h3>
+          <div className="hero-content">
+            <div className="hero-text">
+              <div className="hero-name">
+                АЛЕКСЕЙ
+                <br />
+                УЛЬЯНОВ
+              </div>
 
-          <div className="services">
-            {services.map((service) => (
-              <button
-                className={`service-card ${
-                  selectedService?.id === service.id
-                    ? "selected"
-                    : ""
-                }`}
-                key={service.id}
-                onClick={() => setSelectedService(service)}
-              >
-                <div className="service-top">
-                  <strong>{service.title}</strong>
-                  <span>{service.price}</span>
-                </div>
+              <div className="hero-role">
+                ПЕРСОНАЛЬНЫЙ ТРЕНЕР
+              </div>
+            </div>
 
-                <p>{service.description}</p>
+            <div className="hero-values">
+              <div className="hero-value">
+                <span className="value-icon">◆</span>
+                <span>СИЛА</span>
+              </div>
 
-                <small>{service.duration}</small>
-              </button>
-            ))}
+              <div className="hero-value">
+                <span className="value-icon">◷</span>
+                <span>ВЫНОСЛИВОСТЬ</span>
+              </div>
+
+              <div className="hero-value">
+                <span className="value-icon">▮</span>
+                <span>РЕЗУЛЬТАТЫ</span>
+              </div>
+            </div>
           </div>
+        </header>
 
-          <button
-            className="primary-button"
-            disabled={!selectedService}
-            onClick={() => setStep(2)}
-          >
-            Выбрать дату
-          </button>
-        </>
-      )}
+        {/* MAIN */}
+        <main className="content">
+          {/* SERVICES */}
+          <section className="section">
+            <h2>ВЫБЕРИТЕ ТРЕНИРОВКУ</h2>
 
-      {/* Дата и время */}
-      {step === 2 && (
-        <>
-          <button
-            className="back-button"
-            onClick={() => setStep(1)}
-          >
-            ← Назад
-          </button>
+            <div className="services">
+              {SERVICES.map((service) => {
+                const active = selectedService === service.id;
 
-          <h2 className="page-title">
-            Выберите дату
-          </h2>
+                return (
+                  <button
+                    key={service.id}
+                    type="button"
+                    className={`service-card ${
+                      active ? "active" : ""
+                    }`}
+                    onClick={() => setSelectedService(service.id)}
+                  >
+                    <div className="service-icon">
+                      {service.icon}
+                    </div>
 
-          <div className="dates">
-            {dates.map((item) => (
-              <button
-                key={item.date}
-                className={`date-card ${
-                  selectedDate?.date === item.date
-                    ? "selected"
-                    : ""
-                }`}
-                onClick={() => setSelectedDate(item)}
-              >
-                <strong>{item.day}</strong>
-                <span>{item.date}</span>
-              </button>
-            ))}
-          </div>
+                    <div className="service-info">
+                      <div className="service-title">
+                        {service.title}
+                      </div>
 
-          {selectedDate && (
-            <>
-              <h3 className="section-title">
-                Выберите время
-              </h3>
+                      <div className="service-meta">
+                        {service.duration} ·{" "}
+                        {formatPrice(service.price)}
+                      </div>
+                    </div>
 
-              <div className="times">
-                {times.map((time) => (
+                    <div
+                      className={`radio ${
+                        active ? "checked" : ""
+                      }`}
+                    >
+                      {active && "✓"}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* DATE */}
+          <section className="section">
+            <h2>ВЫБЕРИТЕ ДАТУ</h2>
+
+            <div className="dates">
+              {dates.map((date) => {
+                const active = selectedDate === date.id;
+
+                return (
+                  <button
+                    key={date.id}
+                    type="button"
+                    className={`date-card ${
+                      active ? "active" : ""
+                    }`}
+                    onClick={() => {
+                      setSelectedDate(date.id);
+                      setSubmitted(false);
+                    }}
+                  >
+                    <strong>{date.day}</strong>
+                    <span>{date.weekday}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* TIME */}
+          <section className="section">
+            <h2>ВЫБЕРИТЕ ВРЕМЯ</h2>
+
+            <div className="times">
+              {TIMES.map((time) => {
+                const active = selectedTime === time;
+
+                return (
                   <button
                     key={time}
+                    type="button"
                     className={`time-button ${
-                      selectedTime === time
-                        ? "selected"
-                        : ""
+                      active ? "active" : ""
                     }`}
-                    onClick={() => setSelectedTime(time)}
+                    onClick={() => {
+                      setSelectedTime(time);
+                      setSubmitted(false);
+                    }}
                   >
                     {time}
                   </button>
-                ))}
+                );
+              })}
+            </div>
+          </section>
+
+          {/* USER DATA */}
+          <form className="section" onSubmit={handleSubmit}>
+            <h2>ВАШИ ДАННЫЕ</h2>
+
+            <div className="form-fields">
+              <label className="field">
+                <span>Как вас зовут?</span>
+                <input
+                  type="text"
+                  placeholder="Введите имя"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setSubmitted(false);
+                  }}
+                />
+              </label>
+
+              <label className="field">
+                <span>Telegram</span>
+                <input
+                  type="text"
+                  placeholder="@username"
+                  value={telegram}
+                  onChange={(e) => {
+                    setTelegram(e.target.value);
+                    setSubmitted(false);
+                  }}
+                />
+              </label>
+            </div>
+
+            <button className="book-button" type="submit">
+              ЗАПИСАТЬСЯ
+              <span>→</span>
+            </button>
+          </form>
+
+          {/* SUCCESS */}
+          {submitted && (
+            <section className="success-card">
+              <div className="success-icon">✓</div>
+
+              <div className="success-content">
+                <h3>ЗАПИСЬ ОФОРМЛЕНА!</h3>
+
+                <p>
+                  Алексей получит ваш запрос
+                  <br />
+                  и свяжется с вами.
+                </p>
+
+                <div className="booking-summary">
+                  <div>
+                    <span>Услуга</span>
+                    <strong>{currentService?.title}</strong>
+                  </div>
+
+                  <div>
+                    <span>Дата</span>
+                    <strong>
+                      {currentDate?.day} {currentDate?.month}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Время</span>
+                    <strong>{selectedTime}</strong>
+                  </div>
+
+                  <div>
+                    <span>Стоимость</span>
+                    <strong>
+                      {formatPrice(currentService?.price || 0)}
+                    </strong>
+                  </div>
+                </div>
               </div>
-            </>
+            </section>
           )}
 
-          <button
-            className="primary-button"
-            disabled={!canContinue}
-            onClick={() => setStep(3)}
-          >
-            Продолжить
-          </button>
-        </>
-      )}
+          {/* LOCATION */}
+          <section className="section info-section">
+            <h2>МЕСТО ТРЕНИРОВКИ</h2>
 
-      {/* Данные клиента */}
-      {step === 3 && (
-        <>
-          <button
-            className="back-button"
-            onClick={() => setStep(2)}
-          >
-            ← Назад
-          </button>
+            <div className="info-card">
+              <div className="info-card-icon">📍</div>
 
-          <h2 className="page-title">
-            Ваши данные
-          </h2>
+              <div className="info-card-content">
+                <h3>Alex Fitness</h3>
 
-          <div className="booking-summary">
-            <strong>{selectedService.title}</strong>
+                <p>
+                  Рязань, Первомайский проспект,
+                  <br />
+                  д. 70 корп. 1, лит. А
+                </p>
 
-            <span>
-              {selectedDate.day}, {selectedDate.date}
-            </span>
+                <span className="location-note">
+                  ТРЦ «Виктория Плаза»
+                </span>
+              </div>
+            </div>
 
-            <span>
-              {selectedTime}
-            </span>
-          </div>
+            <a
+              className="map-button"
+              href="https://yandex.ru/maps/?text=Рязань%2C%20Первомайский%20проспект%2C%2070%20корпус%201"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <span>ОТКРЫТЬ В ЯНДЕКС КАРТАХ</span>
+              <span>↗</span>
+            </a>
+          </section>
 
-          <div className="form">
-            <label>
-              Ваше имя
-              <input
-                type="text"
-                placeholder="Например, Сергей"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </label>
+          {/* CONTACTS */}
+          <section className="section info-section">
+            <h2>КОНТАКТЫ</h2>
 
-            <label>
-              Телефон
-              <input
-                type="tel"
-                placeholder="+7 900 000-00-00"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </label>
-          </div>
+            <div className="contacts">
+              <a
+                href="tel:+74912434364"
+                className="contact-card"
+              >
+                <span className="contact-icon">☎</span>
 
-          <button
-            className="primary-button"
-            onClick={confirmBooking}
-          >
-            Подтвердить запись
-          </button>
-        </>
-      )}
+                <div>
+                  <span>Телефон</span>
+                  <strong>+7 (4912) 43-43-64</strong>
+                </div>
+              </a>
 
-      {/* Подтверждение */}
-      {step === 4 && (
-        <div className="success">
-          <div className="success-icon">
-            ✓
-          </div>
+              <a
+                href="tel:+74912906009"
+                className="contact-card"
+              >
+                <span className="contact-icon">☎</span>
 
-          <h2>Вы записаны!</h2>
+                <div>
+                  <span>Телефон</span>
+                  <strong>+7 (4912) 90-60-09</strong>
+                </div>
+              </a>
 
-          <p>
-            Ваша тренировка подтверждена.
-          </p>
+              <a
+                href="https://ryazan.alexfitness.ru/"
+                target="_blank"
+                rel="noreferrer"
+                className="contact-card"
+              >
+                <span className="contact-icon">↗</span>
 
-          <div className="booking-summary">
-            <strong>{selectedService.title}</strong>
+                <div>
+                  <span>Сайт клуба</span>
+                  <strong>ryazan.alexfitness.ru</strong>
+                </div>
+              </a>
+            </div>
+          </section>
 
-            <span>
-              {selectedDate.day}, {selectedDate.date}
-            </span>
+          {/* BOTTOM */}
+          <footer className="footer">
+            <div className="footer-name">
+              АЛЕКСЕЙ УЛЬЯНОВ
+            </div>
 
-            <span>
-              {selectedTime}
-            </span>
+            <div className="footer-role">
+              ПЕРСОНАЛЬНЫЙ ТРЕНЕР
+            </div>
 
-            <span>
-              Тренер: Алексей Петров
-            </span>
-          </div>
-
-          <button
-            className="primary-button"
-            onClick={() => {
-              setStep(1)
-              setSelectedService(null)
-              setSelectedDate(null)
-              setSelectedTime(null)
-              setName("")
-              setPhone("")
-            }}
-          >
-            Новая запись
-          </button>
-        </div>
-      )}
-
+            <div className="footer-line" />
+          </footer>
+        </main>
+      </div>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
