@@ -1,465 +1,629 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 
-const SERVICES = [
-  {
-    id: "personal",
-    title: "Персональная тренировка",
-    duration: "60 минут",
-    price: 2000,
-    icon: "🏋️",
-  },
-  {
-    id: "gym",
-    title: "Тренировка в зале",
-    duration: "90 минут",
-    price: 2500,
-    icon: "💪",
-  },
-  {
-    id: "online",
-    title: "Онлайн-консультация",
-    duration: "60 минут",
-    price: 1500,
-    icon: "💻",
-  },
-];
-
-const TIMES = [
-  "10:00",
-  "11:30",
-  "13:00",
-  "15:00",
-  "17:00",
-  "18:30",
-];
-
-const WEEKDAYS = [
-  "Вс",
-  "Пн",
-  "Вт",
-  "Ср",
-  "Чт",
-  "Пт",
-  "Сб",
-];
-
-function formatPrice(price) {
-  return `${price.toLocaleString("ru-RU")} ₽`;
-}
-
-function getNextDays(count = 6) {
-  const result = [];
-  const today = new Date();
-
-  for (let i = 0; i < count; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-
-    result.push({
-      id: date.toISOString().slice(0, 10),
-      day: date.getDate(),
-      weekday: WEEKDAYS[date.getDay()],
-      month: date.toLocaleDateString("ru-RU", {
-        month: "short",
-      }),
-    });
-  }
-
-  return result;
-}
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbxQWtDfb7XHPzDyKvfdLxWvaSc86Ra4iVAq2ZhsDSJqKik75JBNbh4Z87c2PPDWUvf-/exec";
 
 function App() {
-  const dates = useMemo(() => getNextDays(6), []);
+  const [services, setServices] = useState([]);
+  const [loadingServices, setLoadingServices] = useState(true);
 
-  const [selectedService, setSelectedService] = useState("personal");
-  const [selectedDate, setSelectedDate] = useState(dates[0]?.id);
-  const [selectedTime, setSelectedTime] = useState("11:30");
+  const [selectedService, setSelectedService] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedTime, setSelectedTime] = useState(null);
+
+  const [availableTimes, setAvailableTimes] = useState([]);
+  const [loadingTimes, setLoadingTimes] = useState(false);
 
   const [name, setName] = useState("");
   const [telegram, setTelegram] = useState("");
 
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingError, setBookingError] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
+  // =========================
+  // ЗАГРУЗКА УСЛУГ
+  // =========================
+
   useEffect(() => {
-    // Если приложение открыто внутри Telegram —
-    // автоматически подставляем имя пользователя.
-    if (window.Telegram?.WebApp) {
-      window.Telegram.WebApp.ready();
-      window.Telegram.WebApp.expand();
-
-      const user = window.Telegram.WebApp.initDataUnsafe?.user;
-
-      if (user) {
-        const fullName = [user.first_name, user.last_name]
-          .filter(Boolean)
-          .join(" ");
-
-        if (fullName) {
-          setName(fullName);
+    fetch(API_URL)
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          setServices(
+            data.services.filter((service) => service.active)
+          );
         }
-
-        if (user.username) {
-          setTelegram(`@${user.username}`);
-        }
-      }
-    }
+      })
+      .catch((error) => {
+        console.error("Ошибка загрузки услуг:", error);
+      })
+      .finally(() => {
+        setLoadingServices(false);
+      });
   }, []);
 
-  const currentService = SERVICES.find(
-    (service) => service.id === selectedService
-  );
+  // =========================
+  // ДАТЫ
+  // =========================
 
-  const currentDate = dates.find((date) => date.id === selectedDate);
+  const dates = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date();
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+    date.setDate(date.getDate() + index);
 
-    if (!name.trim()) {
-      alert("Введите ваше имя");
+    return {
+      value: date.toISOString().split("T")[0],
+
+      day: date.toLocaleDateString("ru-RU", {
+        weekday: "short",
+      }),
+
+      number: date.getDate(),
+
+      month: date.toLocaleDateString("ru-RU", {
+        month: "short",
+      }),
+    };
+  });
+
+  // =========================
+  // ПОЛУЧАЕМ СВОБОДНЫЕ ЧАСЫ
+  // =========================
+
+  const loadAvailableTimes = async (date) => {
+    setLoadingTimes(true);
+    setAvailableTimes([]);
+    setSelectedTime(null);
+    setBookingError("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}?action=slots&date=${date}`
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        setAvailableTimes(data.slots);
+      } else {
+        setBookingError("Не удалось получить расписание");
+      }
+    } catch (error) {
+      console.error(error);
+      setBookingError("Ошибка загрузки расписания");
+    } finally {
+      setLoadingTimes(false);
+    }
+  };
+
+  // =========================
+  // ВЫБОР ДАТЫ
+  // =========================
+
+  const handleDateSelect = (date) => {
+    setSelectedDate(date);
+    loadAvailableTimes(date);
+  };
+
+  // =========================
+  // ЗАПИСЬ
+  // =========================
+
+  const handleBooking = async () => {
+    if (
+      !selectedService ||
+      !selectedDate ||
+      !selectedTime ||
+      !name
+    ) {
       return;
     }
 
-    setSubmitted(true);
+    setBookingLoading(true);
+    setBookingError("");
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    const bookingData = {
+      date: selectedDate,
+      time: selectedTime,
+      service: selectedService.name,
+      client: name,
+      telegramId: telegram,
+      phone: "",
+    };
+
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify(bookingData),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(
+          result.error || "Ошибка записи"
+        );
+      }
+
+      setSubmitted(true);
+    } catch (error) {
+      console.error(error);
+
+      setBookingError(
+        error.message ||
+          "Не удалось отправить запись"
+      );
+
+      // Если слот уже заняли —
+      // обновляем список свободного времени
+      if (selectedDate) {
+        loadAvailableTimes(selectedDate);
+      }
+    } finally {
+      setBookingLoading(false);
+    }
   };
 
-  const handleNewBooking = () => {
-    setSubmitted(false);
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
+  // =========================
+  // SUCCESS
+  // =========================
+
+  if (submitted) {
+    return (
+      <div className="app">
+        <div className="success-screen">
+          <div className="success-icon">✓</div>
+
+          <h1>Заявка отправлена</h1>
+
+          <p>
+            {name}, ваша запись на тренировку принята.
+          </p>
+
+          <div className="success-card">
+            <div>
+              <span>Услуга</span>
+              <strong>
+                {selectedService?.name}
+              </strong>
+            </div>
+
+            <div>
+              <span>Дата</span>
+              <strong>{selectedDate}</strong>
+            </div>
+
+            <div>
+              <span>Время</span>
+              <strong>{selectedTime}</strong>
+            </div>
+
+            <div>
+              <span>Стоимость</span>
+              <strong>
+                {selectedService?.price} ₽
+              </strong>
+            </div>
+          </div>
+
+          <button
+            className="main-button"
+            onClick={() => {
+              setSubmitted(false);
+              setSelectedService(null);
+              setSelectedDate(null);
+              setSelectedTime(null);
+              setAvailableTimes([]);
+              setName("");
+              setTelegram("");
+            }}
+          >
+            Вернуться
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================
+  // MAIN
+  // =========================
 
   return (
     <div className="app">
-      <div className="app-shell">
-        {/* HEADER */}
-        <header className="hero">
-          <div className="hero-overlay" />
 
-          <div className="hero-topbar">
-            <button className="round-button" type="button">
-              ←
-            </button>
+      {/* HERO */}
 
-            <button className="round-button" type="button">
-              ☰
-            </button>
+      <section className="hero">
+        <img
+          src="/trainer.jpg"
+          alt="Алексей Ульянов"
+          className="hero-image"
+        />
+
+        <div className="hero-overlay" />
+
+        <div className="hero-content">
+
+          <div className="hero-values">
+            <span>СИЛА</span>
+            <span>ВЫНОСЛИВОСТЬ</span>
+            <span>РЕЗУЛЬТАТЫ</span>
           </div>
 
-          <div className="hero-content">
-            <div className="hero-text">
-              <div className="hero-name">
-                АЛЕКСЕЙ
-                <br />
-                УЛЬЯНОВ
-              </div>
-
-              <div className="hero-role">
-                ПЕРСОНАЛЬНЫЙ ТРЕНЕР
-              </div>
-            </div>
-
-            <div className="hero-values">
-              <div className="hero-value">
-                <span className="value-icon">◆</span>
-                <span>СИЛА</span>
-              </div>
-
-              <div className="hero-value">
-                <span className="value-icon">◷</span>
-                <span>ВЫНОСЛИВОСТЬ</span>
-              </div>
-
-              <div className="hero-value">
-                <span className="value-icon">▮</span>
-                <span>РЕЗУЛЬТАТЫ</span>
-              </div>
-            </div>
+          <div className="hero-info">
+            <h1>Алексей Ульянов</h1>
+            <p>Персональный тренер</p>
           </div>
-        </header>
 
-        {/* MAIN */}
-        <main className="content">
-          {/* SERVICES */}
-          <section className="section">
-            <h2>ВЫБЕРИТЕ ТРЕНИРОВКУ</h2>
+        </div>
+      </section>
 
-            <div className="services">
-              {SERVICES.map((service) => {
-                const active = selectedService === service.id;
+      {/* ABOUT */}
 
-                return (
-                  <button
-                    key={service.id}
-                    type="button"
-                    className={`service-card ${
-                      active ? "active" : ""
-                    }`}
-                    onClick={() => setSelectedService(service.id)}
-                  >
-                    <div className="service-icon">
-                      {service.icon}
-                    </div>
+      <section className="section about">
+        <div className="section-label">
+          ТРЕНЕР
+        </div>
 
-                    <div className="service-info">
-                      <div className="service-title">
-                        {service.title}
-                      </div>
+        <h2>
+          Тренировки под вашу цель
+        </h2>
 
-                      <div className="service-meta">
-                        {service.duration} ·{" "}
-                        {formatPrice(service.price)}
-                      </div>
-                    </div>
+        <p>
+          Персональные тренировки с
+          индивидуальным подходом,
+          контролем техники и программой
+          под ваш уровень подготовки.
+        </p>
+      </section>
 
-                    <div
-                      className={`radio ${
-                        active ? "checked" : ""
-                      }`}
-                    >
-                      {active && "✓"}
-                    </div>
-                  </button>
-                );
-              })}
+      {/* SERVICES */}
+
+      <section className="section">
+
+        <div className="section-label">
+          УСЛУГИ
+        </div>
+
+        <h2>
+          Выберите тренировку
+        </h2>
+
+        {loadingServices ? (
+
+          <div className="loading">
+            Загружаем услуги...
+          </div>
+
+        ) : services.length === 0 ? (
+
+          <div className="empty">
+            Услуги пока недоступны
+          </div>
+
+        ) : (
+
+          <div className="services">
+
+            {services.map((service) => (
+
+              <button
+                key={service.id}
+                className={`service-card ${
+                  selectedService?.id === service.id
+                    ? "selected"
+                    : ""
+                }`}
+                onClick={() =>
+                  setSelectedService(service)
+                }
+              >
+
+                <div className="service-top">
+
+                  <h3>
+                    {service.name}
+                  </h3>
+
+                  <span className="service-price">
+                    {service.price} ₽
+                  </span>
+
+                </div>
+
+                <p>
+                  {service.description}
+                </p>
+
+                <span className="service-duration">
+                  {service.duration} минут
+                </span>
+
+              </button>
+
+            ))}
+
+          </div>
+
+        )}
+
+      </section>
+
+      {/* DATE */}
+
+      <section className="section">
+
+        <div className="section-label">
+          ДАТА
+        </div>
+
+        <h2>
+          Выберите день
+        </h2>
+
+        <div className="dates">
+
+          {dates.map((date) => (
+
+            <button
+              key={date.value}
+              className={`date-card ${
+                selectedDate === date.value
+                  ? "selected"
+                  : ""
+              }`}
+              onClick={() =>
+                handleDateSelect(date.value)
+              }
+            >
+
+              <span>
+                {date.day}
+              </span>
+
+              <strong>
+                {date.number}
+              </strong>
+
+              <small>
+                {date.month}
+              </small>
+
+            </button>
+
+          ))}
+
+        </div>
+
+      </section>
+
+      {/* TIME */}
+
+      {selectedDate && (
+
+        <section className="section">
+
+          <div className="section-label">
+            ВРЕМЯ
+          </div>
+
+          <h2>
+            Свободное время
+          </h2>
+
+          {loadingTimes ? (
+
+            <div className="loading">
+              Проверяем свободное время...
             </div>
-          </section>
 
-          {/* DATE */}
-          <section className="section">
-            <h2>ВЫБЕРИТЕ ДАТУ</h2>
+          ) : availableTimes.length === 0 ? (
 
-            <div className="dates">
-              {dates.map((date) => {
-                const active = selectedDate === date.id;
-
-                return (
-                  <button
-                    key={date.id}
-                    type="button"
-                    className={`date-card ${
-                      active ? "active" : ""
-                    }`}
-                    onClick={() => {
-                      setSelectedDate(date.id);
-                      setSubmitted(false);
-                    }}
-                  >
-                    <strong>{date.day}</strong>
-                    <span>{date.weekday}</span>
-                  </button>
-                );
-              })}
+            <div className="empty">
+              На этот день свободного времени нет
             </div>
-          </section>
 
-          {/* TIME */}
-          <section className="section">
-            <h2>ВЫБЕРИТЕ ВРЕМЯ</h2>
+          ) : (
 
             <div className="times">
-              {TIMES.map((time) => {
-                const active = selectedTime === time;
 
-                return (
-                  <button
-                    key={time}
-                    type="button"
-                    className={`time-button ${
-                      active ? "active" : ""
-                    }`}
-                    onClick={() => {
-                      setSelectedTime(time);
-                      setSubmitted(false);
-                    }}
-                  >
-                    {time}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
+              {availableTimes.map((time) => (
 
-          {/* USER DATA */}
-          <form className="section" onSubmit={handleSubmit}>
-            <h2>ВАШИ ДАННЫЕ</h2>
+                <button
+                  key={time}
+                  className={`time-button ${
+                    selectedTime === time
+                      ? "selected"
+                      : ""
+                  }`}
+                  onClick={() =>
+                    setSelectedTime(time)
+                  }
+                >
+                  {time}
+                </button>
 
-            <div className="form-fields">
-              <label className="field">
-                <span>Как вас зовут?</span>
-                <input
-                  type="text"
-                  placeholder="Введите имя"
-                  value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    setSubmitted(false);
-                  }}
-                />
-              </label>
+              ))}
 
-              <label className="field">
-                <span>Telegram</span>
-                <input
-                  type="text"
-                  placeholder="@username"
-                  value={telegram}
-                  onChange={(e) => {
-                    setTelegram(e.target.value);
-                    setSubmitted(false);
-                  }}
-                />
-              </label>
             </div>
 
-            <button className="book-button" type="submit">
-              ЗАПИСАТЬСЯ
-              <span>→</span>
-            </button>
-          </form>
-
-          {/* SUCCESS */}
-          {submitted && (
-            <section className="success-card">
-              <div className="success-icon">✓</div>
-
-              <div className="success-content">
-                <h3>ЗАПИСЬ ОФОРМЛЕНА!</h3>
-
-                <p>
-                  Алексей получит ваш запрос
-                  <br />
-                  и свяжется с вами.
-                </p>
-
-                <div className="booking-summary">
-                  <div>
-                    <span>Услуга</span>
-                    <strong>{currentService?.title}</strong>
-                  </div>
-
-                  <div>
-                    <span>Дата</span>
-                    <strong>
-                      {currentDate?.day} {currentDate?.month}
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>Время</span>
-                    <strong>{selectedTime}</strong>
-                  </div>
-
-                  <div>
-                    <span>Стоимость</span>
-                    <strong>
-                      {formatPrice(currentService?.price || 0)}
-                    </strong>
-                  </div>
-                </div>
-              </div>
-            </section>
           )}
 
-          {/* LOCATION */}
-          <section className="section info-section">
-            <h2>МЕСТО ТРЕНИРОВКИ</h2>
+        </section>
 
-            <div className="info-card">
-              <div className="info-card-icon">📍</div>
+      )}
 
-              <div className="info-card-content">
-                <h3>Alex Fitness</h3>
+      {/* CONTACT */}
 
-                <p>
-                  Рязань, Первомайский проспект,
-                  <br />
-                  д. 70 корп. 1, лит. А
-                </p>
+      {selectedTime && (
 
-                <span className="location-note">
-                  ТРЦ «Виктория Плаза»
-                </span>
-              </div>
+        <section className="section">
+
+          <div className="section-label">
+            КОНТАКТЫ
+          </div>
+
+          <h2>
+            Оставьте данные
+          </h2>
+
+          <div className="form">
+
+            <input
+              type="text"
+              placeholder="Ваше имя"
+              value={name}
+              onChange={(event) =>
+                setName(event.target.value)
+              }
+            />
+
+            <input
+              type="text"
+              placeholder="Telegram @username"
+              value={telegram}
+              onChange={(event) =>
+                setTelegram(event.target.value)
+              }
+            />
+
+          </div>
+
+        </section>
+
+      )}
+
+      {/* BOOKING */}
+
+      {selectedTime && (
+
+        <section className="section booking-section">
+
+          <div className="booking-summary">
+
+            <div>
+              <span>Услуга</span>
+
+              <strong>
+                {selectedService?.name}
+              </strong>
             </div>
 
-            <a
-              className="map-button"
-              href="https://yandex.ru/maps/?text=Рязань%2C%20Первомайский%20проспект%2C%2070%20корпус%201"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <span>ОТКРЫТЬ В ЯНДЕКС КАРТАХ</span>
-              <span>↗</span>
-            </a>
-          </section>
+            <div>
+              <span>Дата</span>
 
-          {/* CONTACTS */}
-          <section className="section info-section">
-            <h2>КОНТАКТЫ</h2>
-
-            <div className="contacts">
-              <a
-                href="tel:+74912434364"
-                className="contact-card"
-              >
-                <span className="contact-icon">☎</span>
-
-                <div>
-                  <span>Телефон</span>
-                  <strong>+7 (4912) 43-43-64</strong>
-                </div>
-              </a>
-
-              <a
-                href="tel:+74912906009"
-                className="contact-card"
-              >
-                <span className="contact-icon">☎</span>
-
-                <div>
-                  <span>Телефон</span>
-                  <strong>+7 (4912) 90-60-09</strong>
-                </div>
-              </a>
-
-              <a
-                href="https://ryazan.alexfitness.ru/"
-                target="_blank"
-                rel="noreferrer"
-                className="contact-card"
-              >
-                <span className="contact-icon">↗</span>
-
-                <div>
-                  <span>Сайт клуба</span>
-                  <strong>ryazan.alexfitness.ru</strong>
-                </div>
-              </a>
-            </div>
-          </section>
-
-          {/* BOTTOM */}
-          <footer className="footer">
-            <div className="footer-name">
-              АЛЕКСЕЙ УЛЬЯНОВ
+              <strong>
+                {selectedDate}
+              </strong>
             </div>
 
-            <div className="footer-role">
-              ПЕРСОНАЛЬНЫЙ ТРЕНЕР
+            <div>
+              <span>Время</span>
+
+              <strong>
+                {selectedTime}
+              </strong>
             </div>
 
-            <div className="footer-line" />
-          </footer>
-        </main>
-      </div>
+            <div>
+              <span>Стоимость</span>
+
+              <strong>
+                {selectedService?.price} ₽
+              </strong>
+            </div>
+
+          </div>
+
+          {bookingError && (
+
+            <div className="empty">
+              {bookingError}
+            </div>
+
+          )}
+
+          <button
+            className="main-button"
+            disabled={
+              !selectedService ||
+              !name ||
+              bookingLoading
+            }
+            onClick={handleBooking}
+          >
+
+            {bookingLoading
+              ? "ОТПРАВЛЯЕМ..."
+              : "ЗАПИСАТЬСЯ"}
+
+          </button>
+
+        </section>
+
+      )}
+
+      {/* LOCATION */}
+
+      <section className="section location">
+
+        <div className="section-label">
+          ГДЕ
+        </div>
+
+        <h2>
+          Alex Fitness
+        </h2>
+
+        <p>
+          Рязань, Первомайский проспект,
+          д. 70 корп. 1, лит. А
+        </p>
+
+        <a
+          href="https://yandex.ru/maps/?text=Рязань%2C%20Первомайский%20проспект%2C%2070%20корпус%201"
+          target="_blank"
+          rel="noreferrer"
+          className="map-button"
+        >
+          Открыть на карте
+        </a>
+
+      </section>
+
+      {/* CONTACTS */}
+
+      <section className="section contacts">
+
+        <div className="section-label">
+          КОНТАКТЫ
+        </div>
+
+        <a href="tel:+74912434364">
+          +7 (4912) 43-43-64
+        </a>
+
+        <a href="tel:+74912906009">
+          +7 (4912) 90-60-09
+        </a>
+
+        <a
+          href="https://ryazan.alexfitness.ru/"
+          target="_blank"
+          rel="noreferrer"
+        >
+          ryazan.alexfitness.ru
+        </a>
+
+      </section>
+
+      <footer>
+        Alex Fitness · Персональный тренер
+      </footer>
+
     </div>
   );
 }
