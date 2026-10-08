@@ -2664,3 +2664,36 @@ footer {
     font-size: 10px;
   }
 }
+
+/* =========================================================
+   FIX: SERVICE DETAILS / CONSULTATION
+========================================================= */
+
+.consultation-content {
+  border-top: 1px solid #222;
+  padding: 8px;
+}
+
+.consultation-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.service-option-wrap {
+  overflow: visible;
+}
+
+.service-details {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 600px) {
+  .consultation-actions {
+    padding: 10px;
+  }
+}

@@ -52,6 +52,7 @@ function App() {
   */
 
   const [activeSpoiler, setActiveSpoiler] = useState(null);
+  const [activeDetail, setActiveDetail] = useState(null);
 
 
   /* Опрос */
@@ -236,6 +237,7 @@ function App() {
   ========================================================== */
 
   const toggleSpoiler = (id) => {
+    setActiveDetail(null);
     setActiveSpoiler(
       activeSpoiler === id
         ? null
@@ -246,6 +248,7 @@ function App() {
 
   const closeAllSpoilers = () => {
     setActiveSpoiler(null);
+    setActiveDetail(null);
   };
 
 
@@ -2020,407 +2023,180 @@ function App() {
           УСЛУГИ
         </div>
 
-
         <h2>
           Выберите свой формат
         </h2>
-
 
         {loadingServices ? (
           <div className="loading">
             Загружаем услуги...
           </div>
         ) : (
-
           <div className="service-groups">
 
+            {/* ONLINE */}
+            <div className="service-group featured-group">
+              <button
+                className="group-header"
+                onClick={() => toggleSpoiler("online-group")}
+              >
+                <div>
+                  <div className="group-title-line">
+                    <span className="group-kicker">ОНЛАЙН</span>
+                    <span className="hot-badge">🔥 ПОПУЛЯРНОЕ</span>
+                  </div>
+                  <strong>Онлайн сопровождение</strong>
+                </div>
+                <span className="group-arrow">
+                  {activeSpoiler === "online-group" ? "−" : "+"}
+                </span>
+              </button>
+
+              {activeSpoiler === "online-group" && (
+                <div className="group-content">
+                  {onlineServices.length
+                    ? onlineServices.map((service) => (
+                        <ServiceOption
+                          key={service.id}
+                          service={service}
+                          flagship={service.name.toLowerCase().includes("90")}
+                          activeDetail={activeDetail}
+                          setActiveDetail={setActiveDetail}
+                          onSelect={selectService}
+                          getDescription={getDescription}
+                        />
+                      ))
+                    : virtualOnlineServices.map((service) => (
+                        <ServiceOption
+                          key={service.id}
+                          service={service}
+                          flagship={service.id === "online90"}
+                          activeDetail={activeDetail}
+                          setActiveDetail={setActiveDetail}
+                          onSelect={selectService}
+                          getDescription={getDescription}
+                        />
+                      ))}
+                </div>
+              )}
+            </div>
 
             {/* CONSULTATION */}
-
             <div className="service-group">
-
               <button
                 className="group-header"
-                onClick={() =>
-                  toggleSpoiler(
-                    "consultation-group"
-                  )
-                }
+                onClick={() => toggleSpoiler("consultation-group")}
               >
-
                 <div>
-
-                  <span className="group-kicker">
-                    ИНДИВИДУАЛЬНО
-                  </span>
-
-                  <strong>
-                    Консультация
-                  </strong>
-
+                  <span className="group-kicker">ИНДИВИДУАЛЬНО</span>
+                  <strong>Консультация</strong>
                 </div>
-
-
                 <span className="group-arrow">
-                  {activeSpoiler ===
-                  "consultation-group"
-                    ? "−"
-                    : "+"}
+                  {activeSpoiler === "consultation-group" ? "−" : "+"}
                 </span>
-
               </button>
 
-
-              {activeSpoiler ===
-                "consultation-group" && (
-
-                <div className="group-content">
-
-                  {consultationServices.length
-                    ? consultationServices.map(
-                        (service) => (
-                          <ServiceOption
-                            key={service.id}
-                            service={service}
-                            flagship={false}
-                            activeSpoiler={
-                              activeSpoiler
-                            }
-                            setActiveSpoiler={
-                              setActiveSpoiler
-                            }
-                            onSelect={
-                              selectService
-                            }
-                            getDescription={
-                              getDescription
-                            }
-                          />
-                        )
-                      )
-                    : (
-                      <ServiceOption
-                        service={
-                          virtualConsultationService
-                        }
-                        flagship={false}
-                        activeSpoiler={
-                          activeSpoiler
-                        }
-                        setActiveSpoiler={
-                          setActiveSpoiler
-                        }
-                        onSelect={
-                          selectService
-                        }
-                        getDescription={
-                          getDescription
-                        }
-                      />
-                    )}
-
-                </div>
+              {activeSpoiler === "consultation-group" && (
+                <ConsultationContent
+                  service={consultationServices[0] || virtualConsultationService}
+                  activeDetail={activeDetail}
+                  setActiveDetail={setActiveDetail}
+                  onSelect={selectService}
+                  getDescription={getDescription}
+                />
               )}
-
             </div>
-
-
-            {/* ONLINE */}
-
-            <div className="service-group featured-group">
-
-              <button
-                className="group-header"
-                onClick={() =>
-                  toggleSpoiler(
-                    "online-group"
-                  )
-                }
-              >
-
-                <div>
-
-                  <div className="group-title-line">
-
-                    <span className="group-kicker">
-                      ОНЛАЙН
-                    </span>
-
-                    <span className="hot-badge">
-                      🔥 ПОПУЛЯРНОЕ
-                    </span>
-
-                  </div>
-
-                  <strong>
-                    Онлайн сопровождение
-                  </strong>
-
-                </div>
-
-
-                <span className="group-arrow">
-                  {activeSpoiler ===
-                  "online-group"
-                    ? "−"
-                    : "+"}
-                </span>
-
-              </button>
-
-
-              {activeSpoiler ===
-                "online-group" && (
-
-                <div className="group-content">
-
-                  {onlineServices.length
-                    ? onlineServices.map(
-                        (service) => (
-                          <ServiceOption
-                            key={service.id}
-                            service={service}
-                            flagship={service.name
-                              .toLowerCase()
-                              .includes("90")}
-                            activeSpoiler={
-                              activeSpoiler
-                            }
-                            setActiveSpoiler={
-                              setActiveSpoiler
-                            }
-                            onSelect={
-                              selectService
-                            }
-                            getDescription={
-                              getDescription
-                            }
-                          />
-                        )
-                      )
-                    : virtualOnlineServices.map(
-                        (service) => (
-                          <ServiceOption
-                            key={service.id}
-                            service={service}
-                            flagship={
-                              service.id ===
-                              "online90"
-                            }
-                            activeSpoiler={
-                              activeSpoiler
-                            }
-                            setActiveSpoiler={
-                              setActiveSpoiler
-                            }
-                            onSelect={
-                              selectService
-                            }
-                            getDescription={
-                              getDescription
-                            }
-                          />
-                        )
-                      )}
-
-                </div>
-              )}
-
-            </div>
-
 
             {/* OFFLINE */}
-
             <div className="service-group">
-
               <button
                 className="group-header"
-                onClick={() =>
-                  toggleSpoiler(
-                    "offline-group"
-                  )
-                }
+                onClick={() => toggleSpoiler("offline-group")}
               >
-
                 <div>
-
-                  <span className="group-kicker">
-                    В ЗАЛЕ
-                  </span>
-
-                  <strong>
-                    Оффлайн тренировки
-                  </strong>
-
+                  <span className="group-kicker">В ЗАЛЕ</span>
+                  <strong>Оффлайн тренировки</strong>
                 </div>
-
-
                 <span className="group-arrow">
-                  {activeSpoiler ===
-                  "offline-group"
-                    ? "−"
-                    : "+"}
+                  {activeSpoiler === "offline-group" ? "−" : "+"}
                 </span>
-
               </button>
 
-
-              {activeSpoiler ===
-                "offline-group" && (
-
+              {activeSpoiler === "offline-group" && (
                 <div className="offline-content">
-
                   <OfflineCategory
                     title="Блоки тренировочных занятий"
                     type="blocks"
-                    description={
-                      offlineDescriptions.blocks
-                    }
-                    activeSpoiler={
-                      activeSpoiler
-                    }
-                    setActiveSpoiler={
-                      setActiveSpoiler
-                    }
-                    onSelect={
-                      selectService
-                    }
+                    description={offlineDescriptions.blocks}
+                    activeDetail={activeDetail}
+                    setActiveDetail={setActiveDetail}
+                    onSelect={selectService}
                   />
-
-
                   <OfflineCategory
                     title="Сплит-тренировки в группе"
                     type="split"
-                    description={
-                      offlineDescriptions.split
-                    }
-                    activeSpoiler={
-                      activeSpoiler
-                    }
-                    setActiveSpoiler={
-                      setActiveSpoiler
-                    }
-                    onSelect={
-                      selectService
-                    }
+                    description={offlineDescriptions.split}
+                    activeDetail={activeDetail}
+                    setActiveDetail={setActiveDetail}
+                    onSelect={selectService}
                   />
-
-
                   <OfflineCategory
                     title="Персональные тренировки"
                     type="personal"
-                    description={
-                      offlineDescriptions.personal
-                    }
-                    activeSpoiler={
-                      activeSpoiler
-                    }
-                    setActiveSpoiler={
-                      setActiveSpoiler
-                    }
-                    onSelect={
-                      selectService
-                    }
+                    description={offlineDescriptions.personal}
+                    activeDetail={activeDetail}
+                    setActiveDetail={setActiveDetail}
+                    onSelect={selectService}
                   />
-
                 </div>
               )}
-
             </div>
 
-
             {/* NUTRITION */}
-
             <div className="service-group">
-
               <button
                 className="group-header"
-                onClick={() =>
-                  toggleSpoiler(
-                    "nutrition-group"
-                  )
-                }
+                onClick={() => toggleSpoiler("nutrition-group")}
               >
-
                 <div>
-
-                  <span className="group-kicker">
-                    ОТДЕЛЬНО
-                  </span>
-
-                  <strong>
-                    Сопровождение по питанию
-                  </strong>
-
+                  <span className="group-kicker">ОТДЕЛЬНО</span>
+                  <strong>Сопровождение по питанию</strong>
                 </div>
-
-
                 <span className="group-arrow">
-                  {activeSpoiler ===
-                  "nutrition-group"
-                    ? "−"
-                    : "+"}
+                  {activeSpoiler === "nutrition-group" ? "−" : "+"}
                 </span>
-
               </button>
 
-
-              {activeSpoiler ===
-                "nutrition-group" && (
-
+              {activeSpoiler === "nutrition-group" && (
                 <div className="group-content">
-
                   {nutritionServices.length
-                    ? nutritionServices.map(
-                        (service) => (
-                          <ServiceOption
-                            key={service.id}
-                            service={service}
-                            flagship={false}
-                            activeSpoiler={
-                              activeSpoiler
-                            }
-                            setActiveSpoiler={
-                              setActiveSpoiler
-                            }
-                            onSelect={
-                              selectService
-                            }
-                            getDescription={
-                              getDescription
-                            }
-                          />
-                        )
-                      )
+                    ? nutritionServices.map((service) => (
+                        <ServiceOption
+                          key={service.id}
+                          service={service}
+                          flagship={false}
+                          activeDetail={activeDetail}
+                          setActiveDetail={setActiveDetail}
+                          onSelect={selectService}
+                          getDescription={getDescription}
+                        />
+                      ))
                     : (
                       <ServiceOption
-                        service={
-                          virtualNutritionService
-                        }
+                        service={virtualNutritionService}
                         flagship={false}
-                        activeSpoiler={
-                          activeSpoiler
-                        }
-                        setActiveSpoiler={
-                          setActiveSpoiler
-                        }
-                        onSelect={
-                          selectService
-                        }
-                        getDescription={
-                          getDescription
-                        }
+                        activeDetail={activeDetail}
+                        setActiveDetail={setActiveDetail}
+                        onSelect={selectService}
+                        getDescription={getDescription}
                       />
                     )}
-
                 </div>
               )}
-
             </div>
 
           </div>
         )}
-
       </section>
 
 
@@ -2918,230 +2694,174 @@ function App() {
 function ServiceOption({
   service,
   flagship,
-  activeSpoiler,
-  setActiveSpoiler,
+  activeDetail,
+  setActiveDetail,
   onSelect,
   getDescription,
 }) {
-
-  const spoilerId =
-    `service:${service.id}`;
-
-  const isOpen =
-    activeSpoiler ===
-    spoilerId;
-
-  const description =
-    getDescription(service);
-
+  const detailId = `service:${service.id}`;
+  const isOpen = activeDetail === detailId;
+  const description = getDescription(service);
 
   return (
-    <div
-      className={`service-option-wrap ${
-        flagship
-          ? "flagship-option-wrap"
-          : ""
-      }`}
-    >
-
+    <div className={`service-option-wrap ${flagship ? "flagship-option-wrap" : ""}`}>
       <div className="service-option">
-
         <div className="service-main-info">
-
           <div className="option-title-line">
-
-            <strong>
-              {service.name}
-            </strong>
-
-
+            <strong>{service.name}</strong>
             {flagship && (
-              <span className="flagship-badge">
-                ⭐ ФЛАГМАН
-              </span>
+              <span className="flagship-badge">⭐ ФЛАГМАН</span>
             )}
-
           </div>
-
         </div>
 
-
         <div className="service-actions">
-
           <button
             type="button"
             className="details-button"
             onClick={() =>
-              setActiveSpoiler(
-                isOpen
-                  ? null
-                  : spoilerId
-              )
+              setActiveDetail(isOpen ? null : detailId)
             }
           >
-            {isOpen
-              ? "Свернуть"
-              : "Подробнее"}
+            {isOpen ? "Свернуть" : "Подробнее"}
           </button>
-
 
           <button
             type="button"
             className="service-choose-button"
-            onClick={() =>
-              onSelect(service)
-            }
+            onClick={() => onSelect(service)}
           >
             Выбрать
           </button>
-
         </div>
-
       </div>
-
 
       {isOpen && (
         <div className="service-details">
-
-          <p>
-            {description.text}
-          </p>
-
-
-          {description.items.length >
-            0 && (
+          <p>{description.text}</p>
+          {description.items.length > 0 && (
             <ul>
-
-              {description.items.map(
-                (item) => (
-                  <li key={item}>
-                    {item}
-                  </li>
-                )
-              )}
-
+              {description.items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
             </ul>
           )}
-
         </div>
       )}
-
     </div>
   );
 }
 
 
-/* ==========================================================
-   OFFLINE CATEGORY
-========================================================== */
+function ConsultationContent({
+  service,
+  activeDetail,
+  setActiveDetail,
+  onSelect,
+  getDescription,
+}) {
+  const detailId = "consultation-detail";
+  const isOpen = activeDetail === detailId;
+  const description = getDescription(service);
+
+  return (
+    <div className="consultation-content">
+      <div className="consultation-actions">
+        <button
+          type="button"
+          className="details-button"
+          onClick={() =>
+            setActiveDetail(isOpen ? null : detailId)
+          }
+        >
+          {isOpen ? "Свернуть" : "Подробнее"}
+        </button>
+
+        <button
+          type="button"
+          className="service-choose-button"
+          onClick={() => onSelect(service)}
+        >
+          Выбрать
+        </button>
+      </div>
+
+      {isOpen && (
+        <div className="service-details">
+          <p>{description.text}</p>
+          {description.items.length > 0 && (
+            <ul>
+              {description.items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function OfflineCategory({
   title,
   type,
   description,
-  activeSpoiler,
-  setActiveSpoiler,
+  activeDetail,
+  setActiveDetail,
   onSelect,
 }) {
-
-  const spoilerId =
-    `offline:${type}`;
-
-  const isOpen =
-    activeSpoiler ===
-    spoilerId;
-
+  const detailId = `offline:${type}`;
+  const isOpen = activeDetail === detailId;
 
   return (
     <div className="offline-category">
-
       <div className="offline-category-head">
-
-        <div className="offline-category-title">
-          {title}
-        </div>
-
-
+        <div className="offline-category-title">{title}</div>
         <button
           type="button"
           className="offline-more-button"
           onClick={() =>
-            setActiveSpoiler(
-              isOpen
-                ? null
-                : spoilerId
-            )
+            setActiveDetail(isOpen ? null : detailId)
           }
         >
-          {isOpen
-            ? "Свернуть"
-            : "Подробнее"}
+          {isOpen ? "Свернуть" : "Подробнее"}
         </button>
-
       </div>
-
 
       {isOpen && (
         <div className="offline-description">
-
-          <p>
-            {description.text}
-          </p>
-
-
+          <p>{description.text}</p>
           <ul>
-
-            {description.items.map(
-              (item) => (
-                <li key={item}>
-                  {item}
-                </li>
-              )
-            )}
-
+            {description.items.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
           </ul>
-
         </div>
       )}
 
-
       <div className="package-grid">
+        {[5, 10, 20].map((count) => {
+          const service = {
+            id: `${type}-${count}`,
+            name: `${title} — ${count} тренировок`,
+            price: 0,
+            description: "",
+          };
 
-        {[5, 10, 20].map(
-          (count) => {
-
-            const service = {
-              id: `${type}-${count}`,
-
-              name:
-                `${title} — ${count} тренировок`,
-
-              price: 0,
-
-              description: "",
-            };
-
-
-            return (
-              <PackageCard
-                key={service.id}
-                service={service}
-                onSelect={onSelect}
-              />
-            );
-          }
-        )}
-
+          return (
+            <PackageCard
+              key={service.id}
+              service={service}
+              onSelect={onSelect}
+            />
+          );
+        })}
       </div>
-
     </div>
   );
 }
 
-
-/* ==========================================================
-   PACKAGE CARD
-========================================================== */
 
 function PackageCard({
   service,
